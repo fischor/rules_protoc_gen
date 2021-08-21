@@ -1,0 +1,27 @@
+load("@bazel_skylib//rules:build_test.bzl", "build_test")
+load("@rules_proto//proto:defs.bzl", "proto_library")
+load("//:protoc.bzl", "protoc_output")
+
+proto_library(
+    name = "c_proto",
+    srcs = ["c.proto"],
+    visibility = ["//visibility:public"],
+    deps = ["//test/protos:protos_proto"],
+)
+
+# This test case assures that dependencies for proto_libraries are passed
+# to the protoc.
+protoc_output(
+    name = "c_testfile_output",
+    options = ["output_format=file"],
+    plugin = "//test:plugin",
+    protos = [":c_proto"],
+    suffix = ".pb.test",
+)
+
+build_test(
+    name = "c_build_test",
+    targets = [
+        ":c_testfile_output",
+    ],
+)

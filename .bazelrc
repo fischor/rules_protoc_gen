@@ -1,0 +1,5 @@
+# Block /usr/local/include. Otherwise protoc will try to use libs from there
+# and that results is several errors (on Mac where protobuf is installed).
+build --sandbox_block_path=/usr/local/include
+
+build --experimental_proto_descriptor_sets_include_source_info

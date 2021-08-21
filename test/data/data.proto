@@ -1,0 +1,7 @@
+syntax = "proto3";
+
+package test.data;
+
+option go_package = "github.com/fischor/test/data";
+
+message A { string name = 1; }

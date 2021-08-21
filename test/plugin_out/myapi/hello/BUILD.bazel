@@ -1,0 +1,24 @@
+load("@rules_proto//proto:defs.bzl", "proto_library")
+load("@bazel_skylib//rules:build_test.bzl", "build_test")
+load("//:protoc.bzl", "protoc_output")
+
+proto_library(
+    name = "hello_proto",
+    srcs = ["world.proto"],
+    visibility = ["//visibility:public"],
+)
+
+protoc_output(
+    name = "plugin_out_test",
+    plugin = "//test:plugin",
+    plugin_out = "test/plugin_out",
+    protos = [":hello_proto"],
+    suffix = ".pb.test",
+)
+
+build_test(
+    name = "hello_build_test",
+    targets = [
+        ":plugin_out_test",
+    ],
+)

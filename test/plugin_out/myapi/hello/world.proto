@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+package myapi.hello;
+
+option go_package = "github.com/fischor/myapi/hello";
+
+message World {
+  string greeting = 1;
+}

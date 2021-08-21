@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package test.protos.c;
+
+import "test/protos/a.proto";
+
+option go_package = "github.com/fischor/test/protos/c";
+
+message C {
+  string name = 1;
+  test.protos.A a = 2;
+}

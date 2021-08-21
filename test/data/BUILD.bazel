@@ -1,0 +1,42 @@
+load("@rules_proto//proto:defs.bzl", "proto_library")
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+load("@bazel_skylib//rules:diff_test.bzl", "diff_test")
+load("//:protoc.bzl", "protoc_output")
+
+go_library(
+    name = "data_lib",
+    srcs = ["data_plugin.go"],
+    importpath = "github.com/fischor/rules_proto_simple/test/data",
+    visibility = ["//visibility:private"],
+    deps = [
+        "@io_bazel_rules_go//go/tools/bazel:go_default_library",
+        "@org_golang_google_protobuf//compiler/protogen",
+    ],
+)
+
+go_binary(
+    name = "plugin",
+    embed = [":data_lib"],
+    visibility = ["//visibility:public"],
+)
+
+proto_library(
+    name = "data_proto",
+    srcs = ["data.proto"],
+    visibility = ["//visibility:public"],
+)
+
+protoc_output(
+    name = "data_test_output",
+    data = ["testdata.txt"],
+    options = ["testdata=$(location :testdata.txt)"],
+    plugin = ":plugin",
+    protos = [":data_proto"],
+    suffix = ".pb.test",
+)
+
+diff_test(
+    name = "data_test",
+    file1 = "testdata.txt",
+    file2 = ":data_test_output",
+)
