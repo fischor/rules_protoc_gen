@@ -1,6 +1,6 @@
 load("@bazel_skylib//rules:build_test.bzl", "build_test")
 load("@rules_proto//proto:defs.bzl", "proto_library")
-load("//:protoc.bzl", "protoc_output")
+load("//:def.bzl", "protoc_output")
 
 proto_library(
     name = "c_proto",

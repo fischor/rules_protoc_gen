@@ -1,7 +1,7 @@
 load("@rules_proto//proto:defs.bzl", "proto_library")
 load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
 load("@bazel_skylib//rules:diff_test.bzl", "diff_test")
-load("//:protoc.bzl", "protoc_output")
+load("//:def.bzl", "protoc_output")
 
 go_library(
     name = "data_lib",
