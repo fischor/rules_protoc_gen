@@ -2,10 +2,12 @@ load("@rules_proto//proto:defs.bzl", "proto_library")
 load("@bazel_skylib//rules:build_test.bzl", "build_test")
 load("//:def.bzl", "protoc_output")
 
+# gazelle:proto_strip_import_prefix /test/protoc_output/plugin_out
+
 proto_library(
     name = "hello_proto",
     srcs = ["world.proto"],
-    strip_import_prefix = "/test/plugin_out",
+    strip_import_prefix = "/test/protoc_output/plugin_out",
     visibility = ["//visibility:public"],
 )
 
