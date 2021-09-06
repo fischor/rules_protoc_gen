@@ -3,3 +3,6 @@
 build --sandbox_block_path=/usr/local/include
 
 build --experimental_proto_descriptor_sets_include_source_info
+
+build --verbose_failures
+build --sandbox_debug
