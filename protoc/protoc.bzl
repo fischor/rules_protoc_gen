@@ -2,6 +2,7 @@
 """
 
 load("@bazel_skylib//lib:paths.bzl", "paths")
+load("@rules_proto//proto:defs.bzl", "ProtoInfo")
 
 def run_protoc(
         ctx,
@@ -35,9 +36,13 @@ def run_protoc(
     name = plugin.basename.replace(".exe", "")
     args.add("--plugin=protoc-gen-" + name + "=" + plugin.path)
 
-    # Add the ouput prefix. Protoc will put all files that the plugin returns
+    # Add the output prefix. Protoc will put all files that the plugin returns
     # other this folder. E.g. a retuned file `a/b/c.pb.go` will then be placed
     # and thus be generated under `<plugin_out>/a/b/c.pb.go`.
+    # The user provided plugin_out is relative to the workspace directory. Join
+    # with the Bazel bin directory to generate the output where it is expected 
+    # by Bazel (bazel-out/{arch}/bin/<plugin_out>).
+    plugin_out = paths.join(ctx.bin_dir.path, plugin_out)
     args.add("--" + name + "_out=" + plugin_out)
 
     # Add option arguments.
@@ -53,15 +58,29 @@ def run_protoc(
     transitive_inputs = [p.transitive_sources for p in protos]
     inputs = depset(data, transitive = transitive_inputs)
 
-    ctx.actions.run(
+    ctx.actions.run_shell(
         inputs = inputs,
         outputs = outputs,
-        executable = protoc,
+        command = "mkdir -p {} && {} $@".format(plugin_out, protoc.path),
         arguments = [args],
         mnemonic = "ProtocPlugins",
-        tools = [plugin],
+        tools = [protoc, plugin],
         progress_message = "Generating plugin output in {}".format(plugin_out),
     )
+
+
+def proto_source_root_relative_filenames(proto):
+    filenames = []
+    for file in proto[ProtoInfo].direct_sources:
+        # ProtoInfo.proto_source root is the directory relative to which the
+        # .proto files defined in the proto_library are defined. For example, if
+        # this is 'a/b' and the rule has the file 'a/b/c/d.proto' as a source,
+        # that source file would be imported as 'import c/d.proto'
+        # In proto_library rules this can be modified with the "import_prefix""
+        # and "strip_import_prefix" and attributes.
+        filename = paths.relativize(file.path, proto[ProtoInfo].proto_source_root)
+        filenames.append(filename)
+    return filenames
 
 def _protoc_output_impl(ctx):
     # Fail if there is an illegal attribute combination used.
@@ -69,26 +88,40 @@ def _protoc_output_impl(ctx):
         fail("either \"suffix\" or \"predeclared_outputs\" must be specified")
     if ctx.attr.suffix != "" and len(ctx.attr.predeclared_outputs) > 0:
         fail("either \"suffix\" or \"predeclared_outputs\" must be specified, not both")
-    if len(ctx.attr.predeclared_outputs) > 0 and ctx.attr.plugin_out != "":
-        fail("when using predeclared_outputs \"plugin_out\" must not be set. It defaults to the rule directory.")
 
+    # Default the plugin_out parameter to <rule_dir>/<target_name> if not specified.
+    plugin_out = ctx.attr.plugin_out
+    if plugin_out == "":
+        plugin_out = paths.join(ctx.label.package, ctx.label.name)
+    
     outputs = []
     if ctx.attr.suffix:
         for proto in ctx.attr.protos:
-            for file in proto[ProtoInfo].direct_sources:
-                # When using a suffix, outputs are expected to be generated under
-                # the rule directory.
-                out_name = file.basename.replace(".proto", ctx.attr.suffix)
+            filenames = proto_source_root_relative_filenames(proto)
+            for file in filenames:
+                out_full_name = paths.join(plugin_out, file.replace(".proto", ctx.attr.suffix))
+                if not out_full_name.startswith(ctx.label.package):
+                    fail("""Trying to generate an output file named \"{}\" that is not under the current package \"{}/\".
+Bazel requires files to be generated in/below the package of their corresponging rule.""".format(out_name, ctx.label.package))
+                # Make the output path relative to ctx.label.package. When declaring files
+                # with ctx.actions.declare_file the file is always assumed to be relative
+                # to the current package.
+                out_name = paths.relativize(out_full_name, ctx.label.package)
                 out = ctx.actions.declare_file(out_name)
                 outputs.append(out)
-
-        plugin_out = paths.join(ctx.bin_dir.path, ctx.attr.plugin_out)
+        
     if ctx.attr.predeclared_outputs:
         for file in ctx.attr.predeclared_outputs:
-            out = ctx.actions.declare_file(file)
+            out_full_name = paths.join(plugin_out, file)
+            if not out_full_name.startswith(ctx.label.package):
+                fail("""Trying to generate an output file named \"{}\" that is not under the current package \"{}/\".
+Bazel requires files to be generated in/below the package of their corresponging rule.""".format(out_name, ctx.label.package))
+            out_name = paths.relativize(out_full_name, ctx.label.package)
+                # Make the output path relative to ctx.label.package. When declaring files
+                # with ctx.actions.declare_file the file is always assumed to be relative
+                # to the current package.
+            out = ctx.actions.declare_file(out_name)
             outputs.append(out)
-
-        plugin_out = paths.join(ctx.bin_dir.path, paths.dirname(ctx.build_file_path))
 
     expanded_options = []
     for opt in ctx.attr.options:
@@ -155,7 +188,7 @@ protoc_output(
             doc = "the plugin executable",
             cfg = "exec",
             executable = True,
-	    mandatory = True,
+            mandatory = True,
         ),
         "suffix": attr.string(
             doc = "suffix produced by the plugin",

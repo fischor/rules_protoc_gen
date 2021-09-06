@@ -15,6 +15,7 @@ stardoc(
     deps = [
         ":paths",
         "//protoc:protoc_bzl",
+        "@rules_proto//proto:defs"
     ],
 )
 

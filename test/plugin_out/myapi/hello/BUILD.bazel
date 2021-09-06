@@ -6,6 +6,7 @@ proto_library(
     name = "hello_proto",
     srcs = ["world.proto"],
     visibility = ["//visibility:public"],
+    strip_import_prefix = "/test/plugin_out",
 )
 
 protoc_output(
