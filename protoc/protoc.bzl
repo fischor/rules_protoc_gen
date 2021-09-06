@@ -3,6 +3,9 @@
 
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@rules_proto//proto:defs.bzl", "ProtoInfo")
+load("//protoc:providers.bzl", "ProtocPluginInfo")
+
+_DEFAULT_PROTOC = "@com_google_protobuf//:protoc"
 
 def run_protoc(
         ctx,
@@ -69,60 +72,33 @@ def run_protoc(
     )
 
 
-def proto_source_root_relative_filenames(proto):
-    filenames = []
-    for file in proto[ProtoInfo].direct_sources:
-        # ProtoInfo.proto_source root is the directory relative to which the
-        # .proto files defined in the proto_library are defined. For example, if
-        # this is 'a/b' and the rule has the file 'a/b/c/d.proto' as a source,
-        # that source file would be imported as 'import c/d.proto'
-        # In proto_library rules this can be modified with the "import_prefix""
-        # and "strip_import_prefix" and attributes.
-        filename = paths.relativize(file.path, proto[ProtoInfo].proto_source_root)
-        filenames.append(filename)
-    return filenames
-
 def _protoc_output_impl(ctx):
-    # Fail if there is an illegal attribute combination used.
-    if ctx.attr.suffix == "" and len(ctx.attr.predeclared_outputs) == 0:
-        fail("either \"suffix\" or \"predeclared_outputs\" must be specified")
-    if ctx.attr.suffix != "" and len(ctx.attr.predeclared_outputs) > 0:
-        fail("either \"suffix\" or \"predeclared_outputs\" must be specified, not both")
+    protos = [p[ProtoInfo] for p in ctx.attr.protos]
 
     # Default the plugin_out parameter to <rule_dir>/<target_name> if not specified.
     plugin_out = ctx.attr.plugin_out
     if plugin_out == "":
         plugin_out = paths.join(ctx.label.package, ctx.label.name)
     
-    outputs = []
-    if ctx.attr.suffix:
-        for proto in ctx.attr.protos:
-            filenames = proto_source_root_relative_filenames(proto)
-            for file in filenames:
-                out_full_name = paths.join(plugin_out, file.replace(".proto", ctx.attr.suffix))
-                if not out_full_name.startswith(ctx.label.package):
-                    fail("""Trying to generate an output file named \"{}\" that is not under the current package \"{}/\".
-Bazel requires files to be generated in/below the package of their corresponging rule.""".format(out_name, ctx.label.package))
-                # Make the output path relative to ctx.label.package. When declaring files
-                # with ctx.actions.declare_file the file is always assumed to be relative
-                # to the current package.
-                out_name = paths.relativize(out_full_name, ctx.label.package)
-                out = ctx.actions.declare_file(out_name)
-                outputs.append(out)
-        
-    if ctx.attr.predeclared_outputs:
-        for file in ctx.attr.predeclared_outputs:
-            out_full_name = paths.join(plugin_out, file)
-            if not out_full_name.startswith(ctx.label.package):
-                fail("""Trying to generate an output file named \"{}\" that is not under the current package \"{}/\".
-Bazel requires files to be generated in/below the package of their corresponging rule.""".format(out_name, ctx.label.package))
-            out_name = paths.relativize(out_full_name, ctx.label.package)
-                # Make the output path relative to ctx.label.package. When declaring files
-                # with ctx.actions.declare_file the file is always assumed to be relative
-                # to the current package.
-            out = ctx.actions.declare_file(out_name)
-            outputs.append(out)
+    # Call the plugin provided output function to obtain the filenames that the plugin
+    # is going to generated. See the documentation of ProtocPluginInfo for more information
+    # how that works.
+    plugin_info = ctx.attr.plugin[ProtocPluginInfo]
+    filenames = plugin_info.outputs(protos, ctx.attr.outputs, **plugin_info.outputs_kwargs)
 
+    outputs = []
+    for file in filenames:
+        out_full_name = paths.join(plugin_out, file)
+        if not out_full_name.startswith(ctx.label.package):
+            fail("""Trying to generate an output file named \"{}\" that is not under the current package \"{}/\".
+Bazel requires files to be generated in/below the package of their corresponging rule.""".format(out_name, ctx.label.package))
+        # Make the output path relative to ctx.label.package. When declaring files
+        # with ctx.actions.declare_file the file is always assumed to be relative
+        # to the current package.
+        out_name = paths.relativize(out_full_name, ctx.label.package)
+        out = ctx.actions.declare_file(out_name)
+        outputs.append(out)
+        
     expanded_options = []
     for opt in ctx.attr.options:
         # TODO: $(locations ...) produces a space-separated list of output paths,
@@ -132,11 +108,11 @@ Bazel requires files to be generated in/below the package of their corresponging
 
     run_protoc(
         ctx = ctx,
+        protos = protos,
         protoc = ctx.executable.protoc,
-        plugin = ctx.executable.plugin,
+        plugin = plugin_info.executable,
         outputs = outputs,
         options = expanded_options,
-        protos = [p[ProtoInfo] for p in ctx.attr.protos],
         plugin_out = plugin_out,
         data = ctx.files.data,
     )
@@ -145,39 +121,7 @@ Bazel requires files to be generated in/below the package of their corresponging
 
 protoc_output = rule(
     implementation = _protoc_output_impl,
-    doc = """Runs a protoc plugin.
-
-This rule has two ways of defining its outputs.
-Using predeclared_outputs:
-
-```python
-protoc_output(
-    name = "services_py_output",
-    protos = [
-        ":service_a_proto", 
-        ":service_b_proto", 
-        ":service_c_proto"
-    ],
-    predeclared_outputs = [
-        "path/to/my/services_pb.py", 
-    ]
-    plugin = "//:my_python_plugin",
-)
-```
-
-The other way is defining a `suffix`. 
-It will be used to replace ".proto" for all input files. 
-E.g:
-
-```python
-protoc_output(
-    name = "services_py_output",
-    protos = [":services.proto", "other.proto"],
-    plugin = "//:my_python_plugin",
-    suffix = "_pb.ts",
-)
-```
-""",
+    doc = """Runs a protoc plugin.""",
     attrs = {
         "protos": attr.label_list(
             doc = "the proto libraries to compile",
@@ -186,17 +130,11 @@ protoc_output(
         ),
         "plugin": attr.label(
             doc = "the plugin executable",
-            cfg = "exec",
-            executable = True,
+            providers = [ProtocPluginInfo],
             mandatory = True,
         ),
-        "suffix": attr.string(
-            doc = "suffix produced by the plugin",
-            mandatory = False,
-        ),
-        "predeclared_outputs": attr.string_list(
-            doc = "list of outputs generated. Either this or suffix must be specified",
-            mandatory = False,
+        "outputs": attr.string_list(
+            doc = "output attributes",
         ),
         "options": attr.string_list(
             doc = """Options passed to the plugins.
@@ -219,7 +157,7 @@ pass that file to data to obtain the path. or execpath, rlocation..?
             executable = True,
             cfg = "exec",
             allow_files = True,
-            default = Label("@com_google_protobuf//:protoc"),
+            default = Label(_DEFAULT_PROTOC),
         ),
     },
 )

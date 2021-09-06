@@ -16,7 +16,6 @@ protoc_output(
     options = ["output_format=file"],
     plugin = "//test:plugin",
     protos = [":c_proto"],
-    suffix = ".pb.test",
 )
 
 build_test(

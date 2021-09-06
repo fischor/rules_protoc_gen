@@ -1,28 +1,7 @@
-load("@io_bazel_stardoc//stardoc:stardoc.bzl", "stardoc")
 load("@bazel_gazelle//:def.bzl", "gazelle")
-load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 
 # gazelle:prefix github.com/fischor/rules_proto_simple
 # gazelle:go_generate_proto false
-
-stardoc(
-    name = "docs",
-    out = "def.md",
-    input = "def.bzl",
-    symbol_names = [
-        "protoc_output",
-    ],
-    deps = [
-        ":paths",
-        "//protoc:protoc_bzl",
-        "@rules_proto//proto:defs"
-    ],
-)
-
-bzl_library(
-    name = "paths",
-    srcs = ["@bazel_skylib//lib:paths.bzl"],
-)
 
 gazelle(
     name = "gazelle",

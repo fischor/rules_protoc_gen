@@ -1,7 +1,59 @@
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
+load("@io_bazel_stardoc//stardoc:stardoc.bzl", "stardoc")
 
 bzl_library(
-    name = "protoc_bzl",
+    name = "plugin",
+    srcs = ["plugin.bzl"],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":providers",
+        "@bazel_skylib//lib:paths.bzl",
+    ],
+)
+
+bzl_library(
+    name = "protoc",
     srcs = ["protoc.bzl"],
     visibility = ["//visibility:public"],
+    deps = [
+        ":providers",
+        "@bazel_skylib//lib:paths.bzl",
+        "@rules_proto//proto:defs",
+    ],
+)
+
+bzl_library(
+    name = "providers",
+    srcs = ["providers.bzl"],
+    visibility = ["//visibility:public"],
+)
+
+stardoc(
+    name = "plugin_docs",
+    out = "plugin.md",
+    input = "plugin.bzl",
+    symbol_names = [
+        "protoc_plugin",
+    ],
+    deps = [":plugin"],
+)
+
+stardoc(
+    name = "protoc_docs",
+    out = "protoc.md",
+    input = "protoc.bzl",
+    symbol_names = [
+        "protoc_output",
+    ],
+    deps = [":protoc"],
+)
+
+stardoc(
+    name = "providers_docs",
+    out = "providers.md",
+    input = "providers.bzl",
+    symbol_names = [
+        "ProtocPluginInfo",
+    ],
+    deps = [":providers"],
 )

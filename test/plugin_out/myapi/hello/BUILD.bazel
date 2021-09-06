@@ -5,8 +5,8 @@ load("//:def.bzl", "protoc_output")
 proto_library(
     name = "hello_proto",
     srcs = ["world.proto"],
-    visibility = ["//visibility:public"],
     strip_import_prefix = "/test/plugin_out",
+    visibility = ["//visibility:public"],
 )
 
 protoc_output(
@@ -14,7 +14,6 @@ protoc_output(
     plugin = "//test:plugin",
     plugin_out = "test/plugin_out",
     protos = [":hello_proto"],
-    suffix = ".pb.test",
 )
 
 build_test(

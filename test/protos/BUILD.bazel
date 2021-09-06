@@ -15,18 +15,17 @@ protoc_output(
     name = "protos_test_output1",
     plugin = "//test:plugin",
     protos = [":protos_proto"],
-    suffix = ".pb.test",
 )
 
-protoc_output(
-    name = "protos_test_output2",
-    plugin = "//test:plugin",
-    predeclared_outputs = [
-        "test/protos/a.pb.test",
-        "test/protos/b.pb.test",
-    ],
-    protos = [":protos_proto"],
-)
+# protoc_output(
+#     name = "protos_test_output2",
+#     plugin = "//test:plugin",
+#     predeclared_outputs = [
+#         "test/protos/a.pb.test",
+#         "test/protos/b.pb.test",
+#     ],
+#     protos = [":protos_proto"],
+# )
 
 build_test(
     name = "protos_build_test1",
@@ -35,9 +34,9 @@ build_test(
     ],
 )
 
-build_test(
-    name = "protos_build_test2",
-    targets = [
-        ":protos_test_output2",
-    ],
-)
+# build_test(
+#     name = "protos_build_test2",
+#     targets = [
+#         ":protos_test_output2",
+#     ],
+# )

@@ -1,4 +1,5 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+load("//:def.bzl", "protoc_plugin")
 
 go_library(
     name = "test_lib",
@@ -9,7 +10,13 @@ go_library(
 )
 
 go_binary(
-    name = "plugin",
+    name = "plugin_bin",
     embed = [":test_lib"],
+)
+
+protoc_plugin(
+    name = "plugin",
+    executable = ":plugin_bin",
+    suffix = ".pb.test",
     visibility = ["//visibility:public"],
 )
