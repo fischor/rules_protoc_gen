@@ -1,0 +1,8 @@
+syntax = "proto3";
+
+package test.protoc_plugin;
+option go_package = "github.com/fischor/rules_protoc_gen/test/protoc_plugin/foo";
+
+message Foo {
+    int64 value = 1;
+}

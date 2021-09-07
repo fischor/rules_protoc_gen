@@ -1,0 +1,91 @@
+load("@rules_proto//proto:defs.bzl", "proto_library")
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+load("@bazel_skylib//rules:diff_test.bzl", "diff_test")
+load("//:def.bzl", "protoc_output", "protoc_plugin")
+
+proto_library(
+    name = "foo_proto",
+    srcs = ["foo.proto"],
+    visibility = ["//visibility:public"],
+)
+
+###############################################################################
+# Executable runfiles test
+###############################################################################
+
+go_library(
+    name = "executable_runfiles_plugin_lib",
+    srcs = ["executable_runfiles_plugin.go"],
+    importpath = "github.com/fischor/rules_proto_simple/test/protoc_plugin",
+    visibility = ["//visibility:private"],
+    deps = [
+        "@io_bazel_rules_go//go/tools/bazel:go_default_library",
+        "@org_golang_google_protobuf//compiler/protogen",
+    ],
+)
+
+go_binary(
+    name = "executable_runfiles_plugin_bin",
+    embed = [":executable_runfiles_plugin_lib"],
+    visibility = ["//visibility:public"],
+    data = ["executable_runfiles.conf"],
+)
+
+protoc_plugin(
+    name = "executable_runfiles_plugin",
+    executable = ":executable_runfiles_plugin_bin",
+    suffix = ".executable_runfiles.pb",
+)
+
+protoc_output(
+    name = "foo_executable_runfiles_output",
+    plugin = ":executable_runfiles_plugin",
+    protos = [":foo_proto"],
+)
+
+diff_test(
+    name = "executable_runfiles_test",
+    file1 = "executable_runfiles.conf",
+    file2 = ":foo_executable_runfiles_output",
+)
+
+###############################################################################
+# Data test
+###############################################################################
+
+go_library(
+    name = "data_plugin_lib",
+    srcs = ["data_plugin.go"],
+    importpath = "github.com/fischor/rules_proto_simple/test/protoc_plugin",
+    visibility = ["//visibility:private"],
+    deps = [
+        "@io_bazel_rules_go//go/tools/bazel:go_default_library",
+        "@org_golang_google_protobuf//compiler/protogen",
+    ],
+)
+
+go_binary(
+    name = "data_plugin_bin",
+    embed = [":data_plugin_lib"],
+    visibility = ["//visibility:public"],
+)
+
+protoc_plugin(
+    name = "data_plugin",
+    data = ["data.conf"],
+    default_options = ["config=$(rootpath data.conf)"],
+    executable = ":data_plugin_bin",
+    suffix = ".data.pb",
+)
+
+protoc_output(
+    name = "foo_data_output",
+    plugin = ":data_plugin",
+    protos = [":foo_proto"],
+)
+
+diff_test(
+    name = "data_test",
+    file1 = "data.conf",
+    file2 = ":foo_data_output",
+)
