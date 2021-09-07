@@ -94,7 +94,6 @@ Either the `suffix` attribute or the `predeclared_outputs` attributes must be se
         "predeclared_outputs": attr.bool(
             doc = """If true, the plugin is configured to accept a list of predeclared outputs when used in a `protoc_output` target.
 The list of predeclared outputs is passed in the `outputs` attribute of the `protoc_output` rule.
-See also the documention of `protoc_plugin`.
 """,
         ),
         "default_options": attr.string_list(
