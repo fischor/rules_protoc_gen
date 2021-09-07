@@ -1,4 +1,5 @@
 load("@bazel_gazelle//:def.bzl", "gazelle")
+load("@io_bazel_stardoc//stardoc:stardoc.bzl", "stardoc")
 
 # gazelle:prefix github.com/fischor/rules_proto_simple
 # gazelle:go_generate_proto false
@@ -10,4 +11,50 @@ gazelle(
 
 gazelle(
     name = "gazelle_fix",
+)
+
+stardoc(
+    name = "rules_docs",
+    out = "def.md",
+    header_template = "//docs:header.vm",
+    input = "def.bzl",
+    symbol_names = [
+        "protoc_plugin",
+        "protoc_output",
+    ],
+    deps = [
+        "//protoc",
+        "//protoc:plugin",
+    ],
+)
+
+stardoc(
+    name = "providers_docs",
+    out = "providers.md",
+    header_template = "//docs:header.vm",
+    input = "providers.bzl",
+    symbol_names = [
+        "ProtocPluginInfo",
+    ],
+    deps = ["//protoc:providers"],
+)
+
+filegroup(
+    name = "docs",
+    srcs = [
+        ":providers_docs",
+        ":rules_docs",
+    ],
+)
+
+genrule(
+    name = "README",
+    srcs = [
+        ":providers_docs",
+        ":rules_docs",
+        "//docs:README.md.template"
+    ],
+    outs = ["README.md"],
+    ## $$ to escape the dollar from being used with Bazel location expansion.
+    cmd = "RULES=$$(cat $(location :rules_docs)) PROVIDERS=$$(cat $(location :providers_docs)) envsubst < $(location //docs:README.md.template) > $(location README.md)",
 )

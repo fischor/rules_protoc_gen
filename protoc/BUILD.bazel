@@ -57,3 +57,12 @@ stardoc(
     ],
     deps = [":providers"],
 )
+
+filegroup(
+    name = "docs",
+    srcs = [
+        ":plugin_docs",
+        ":protoc_docs",
+        ":providers_docs",
+    ],
+)
