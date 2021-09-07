@@ -1,4 +1,5 @@
 """Rules and functions to define protoc plugins."""
+
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("//protoc:providers.bzl", "ProtocPluginInfo")
 
@@ -35,20 +36,25 @@ def _protoc_plugin_impl(ctx):
     if ctx.attr.predeclared_outputs:
         outputs = with_predeclared_outputs
         outputs_kwargs = {}
-    
+
     expanded_options = []
-    for opt in ctx.attr.options:
+    for opt in ctx.attr.default_options:
         # TODO: $(locations ...) produces a space-separated list of output paths,
         # this must somewhat be handeled since it is passed directly to the
         # command line via "key=value value value".
         expanded_options.append(ctx.expand_location(opt, ctx.attr.data))
-    
+
+    # Collect the runfiles necessary to run the plugin.
+    runfiles = ctx.runfiles(files = ctx.files.data)
+    runfiles = runfiles.merge(ctx.attr.executable[DefaultInfo].default_runfiles)
+
     return ProtocPluginInfo(
+        # executable = wrapper_exec,
         executable = ctx.executable.executable,
         outputs = outputs,
         outputs_kwargs = outputs_kwargs,
         default_options = expanded_options,
-        data = ctx.attr.data,
+        runfiles = runfiles,
     )
 
 protoc_plugin = rule(
@@ -65,5 +71,5 @@ protoc_plugin = rule(
             doc = "files added to the execution env such that the plugin have access to them",
             allow_files = True,
         ),
-    }
+    },
 )

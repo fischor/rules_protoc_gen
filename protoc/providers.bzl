@@ -1,9 +1,9 @@
 """Providers to define protoc plugins."""
 
-ProtocPluginInfo = provider("", fields={
+ProtocPluginInfo = provider("", fields = {
     "executable": "The plugin executable",
     "default_options": "Options passed to the plugin by default",
-    "data": "Made available to the plugin",
+    "runfiles": "Made available to the plugin",
     "outputs": """Function to provide names for generated files.
 
 The function signature is 
@@ -16,5 +16,5 @@ where `protos` are the ProtoInfo providers of the labels passed to
 `protoc_output`s `protos` attribute and args are the output_args passed to
 `protoc_output`s `outputs` attribute and **kwargs are the providers 
 `outputs_kwargs`.""",
-    "outputs_kwargs": "Predefined keyword arguments passed to the output function."
+    "outputs_kwargs": "Predefined keyword arguments passed to the output function.",
 })

@@ -25,7 +25,7 @@ def run_protoc(
         plugin (executable): the plugin executable
         options (list(str)): list of options passed to the plugin
         plugin_out: out parameter passed to the plugin
-        data (list(File)): additional files added to the action as inputs
+        data (depset of File): additional files added to the action as inputs
     """
 
     # Merge proto root paths of all protos. Each proto root path will be passed
@@ -43,7 +43,7 @@ def run_protoc(
     # other this folder. E.g. a retuned file `a/b/c.pb.go` will then be placed
     # and thus be generated under `<plugin_out>/a/b/c.pb.go`.
     # The user provided plugin_out is relative to the workspace directory. Join
-    # with the Bazel bin directory to generate the output where it is expected 
+    # with the Bazel bin directory to generate the output where it is expected
     # by Bazel (bazel-out/{arch}/bin/<plugin_out>).
     plugin_out = paths.join(ctx.bin_dir.path, plugin_out)
     args.add("--" + name + "_out=" + plugin_out)
@@ -58,8 +58,11 @@ def run_protoc(
         args.add_all(proto.direct_sources)
 
     # Collect inputs.
-    transitive_inputs = [p.transitive_sources for p in protos]
-    inputs = depset(data, transitive = transitive_inputs)
+    direct_sources = []  # list of File
+    for proto in protos:
+        direct_sources.extend(proto.direct_sources)
+    transitive_sources = [p.transitive_sources for p in protos]  # list of depsets
+    inputs = depset(direct_sources, transitive = transitive_sources + [data])  # data is a depset
 
     ctx.actions.run_shell(
         inputs = inputs,
@@ -71,7 +74,6 @@ def run_protoc(
         progress_message = "Generating plugin output in {}".format(plugin_out),
     )
 
-
 def _protoc_output_impl(ctx):
     protos = [p[ProtoInfo] for p in ctx.attr.protos]
 
@@ -79,7 +81,7 @@ def _protoc_output_impl(ctx):
     plugin_out = ctx.attr.plugin_out
     if plugin_out == "":
         plugin_out = paths.join(ctx.label.package, ctx.label.name)
-    
+
     # Call the plugin provided output function to obtain the filenames that the plugin
     # is going to generated. See the documentation of ProtocPluginInfo for more information
     # how that works.
@@ -92,13 +94,14 @@ def _protoc_output_impl(ctx):
         if not out_full_name.startswith(ctx.label.package):
             fail("""Trying to generate an output file named \"{}\" that is not under the current package \"{}/\".
 Bazel requires files to be generated in/below the package of their corresponging rule.""".format(out_name, ctx.label.package))
+
         # Make the output path relative to ctx.label.package. When declaring files
         # with ctx.actions.declare_file the file is always assumed to be relative
         # to the current package.
         out_name = paths.relativize(out_full_name, ctx.label.package)
         out = ctx.actions.declare_file(out_name)
         outputs.append(out)
-        
+
     expanded_options = []
     for opt in ctx.attr.options:
         # TODO: $(locations ...) produces a space-separated list of output paths,
@@ -112,9 +115,9 @@ Bazel requires files to be generated in/below the package of their corresponging
         protoc = ctx.executable.protoc,
         plugin = plugin_info.executable,
         outputs = outputs,
-        options = expanded_options,
+        options = expanded_options + plugin_info.default_options,
         plugin_out = plugin_out,
-        data = ctx.files.data,
+        data = depset(ctx.files.data, transitive = [plugin_info.runfiles.files]),
     )
 
     return DefaultInfo(files = depset(outputs))
