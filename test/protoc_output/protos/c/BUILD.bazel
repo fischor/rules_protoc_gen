@@ -5,15 +5,15 @@ load("//:def.bzl", "protoc_output")
 proto_library(
     name = "c_proto",
     srcs = ["c.proto"],
+    strip_import_prefix = "/test/protoc_output",
     visibility = ["//visibility:public"],
-    deps = ["//test/protos:protos_proto"],
+    deps = ["//test/protoc_output/protos:protos_proto"],
 )
 
 # This test case assures that dependencies for proto_libraries are passed
 # to the protoc.
 protoc_output(
     name = "c_testfile_output",
-    options = ["output_format=file"],
     plugin = "//test:plugin",
     protos = [":c_proto"],
 )

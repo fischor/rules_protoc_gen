@@ -1,7 +1,6 @@
 package main
 
 import (
-	"path"
 	"strings"
 
 	"google.golang.org/protobuf/compiler/protogen"
@@ -16,9 +15,7 @@ func generate(gen *protogen.Plugin) error {
 		if !f.Generate {
 			continue
 		}
-		basename := path.Base(f.GeneratedFilenamePrefix) + ".pb.test"
-		dirname := strings.ReplaceAll(*f.Proto.Package, ".", "/")
-		filename := path.Join(dirname, basename)
+		filename := strings.ReplaceAll(*f.Proto.Name, ".proto", ".pb.test")
 		// The will result in a file with path dirname/basename in the
 		// CodeGeneratorResponse.
 		g := gen.NewGeneratedFile(filename, f.GoImportPath)

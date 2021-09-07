@@ -4,7 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
-	"path"
 	"strings"
 
 	"github.com/bazelbuild/rules_go/go/tools/bazel"
@@ -45,9 +44,7 @@ func generate(gen *protogen.Plugin) error {
 		if !f.Generate {
 			continue
 		}
-		basename := path.Base(f.GeneratedFilenamePrefix) + ".pb.test"
-		dirname := strings.ReplaceAll(*f.Proto.Package, ".", "/")
-		filename := path.Join(dirname, basename)
+		filename := strings.ReplaceAll(*f.Proto.Name, ".proto", ".pb.test")
 		// The will result in a file with path dirname/basename in the
 		// CodeGeneratorResponse.
 		g := gen.NewGeneratedFile(filename, f.GoImportPath)

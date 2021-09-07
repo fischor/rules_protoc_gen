@@ -29,6 +29,7 @@ protoc_plugin(
 proto_library(
     name = "data_proto",
     srcs = ["data.proto"],
+    strip_import_prefix = "/test/protoc_output",
     visibility = ["//visibility:public"],
 )
 

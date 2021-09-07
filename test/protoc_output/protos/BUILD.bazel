@@ -8,35 +8,19 @@ proto_library(
         "a.proto",
         "b.proto",
     ],
+    strip_import_prefix = "/test/protoc_output",
     visibility = ["//visibility:public"],
 )
 
 protoc_output(
-    name = "protos_test_output1",
+    name = "protos_test_output",
     plugin = "//test:plugin",
     protos = [":protos_proto"],
 )
 
-# protoc_output(
-#     name = "protos_test_output2",
-#     plugin = "//test:plugin",
-#     predeclared_outputs = [
-#         "test/protos/a.pb.test",
-#         "test/protos/b.pb.test",
-#     ],
-#     protos = [":protos_proto"],
-# )
-
 build_test(
-    name = "protos_build_test1",
+    name = "protos_build_test",
     targets = [
-        ":protos_test_output1",
+        ":protos_test_output",
     ],
 )
-
-# build_test(
-#     name = "protos_build_test2",
-#     targets = [
-#         ":protos_test_output2",
-#     ],
-# )

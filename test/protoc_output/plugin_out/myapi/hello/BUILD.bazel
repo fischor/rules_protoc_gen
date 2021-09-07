@@ -11,10 +11,14 @@ proto_library(
     visibility = ["//visibility:public"],
 )
 
+# Using a different plugin_out attr value here. With this
+# configuration, the file will be generated under 
+# test/protoc_output/plugin_out/myapi/hello/world.pb.test instead of
+# test/protoc_output/plugin_out/plugin_out_test/myapi/hello/worlf.pb.test.
 protoc_output(
     name = "plugin_out_test",
     plugin = "//test:plugin",
-    plugin_out = "test/plugin_out",
+    plugin_out = "test/protoc_output/plugin_out",
     protos = [":hello_proto"],
 )
 
