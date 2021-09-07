@@ -93,26 +93,7 @@ Either the `suffix` attribute or the `predeclared_outputs` attributes must be se
         ),
         "predeclared_outputs": attr.bool(
             doc = """If true, the plugin is configured to accept a list of predeclared outputs when used in a `protoc_output` target.
-The list of predeclared outputs is passed in the `outputs` attribute of the `protoc_output` rule. For example:
-
-```python
-protoc_plugin(
-    name = "myplugin",
-    executable = ":myexecutable",
-    predeclared_outputs = True,
-)
-
-protoc_output(
-    name = "foo_output".
-    protos = [":foo_proto"],
-    plugin = ":myplugin",
-    outputs = [
-        "acme/cloud/mypkg/hello.py",
-        "acme/cloud/mypkg/world.py",
-    ]
-)
-```
-
+The list of predeclared outputs is passed in the `outputs` attribute of the `protoc_output` rule.
 See also the documention of `protoc_plugin`.
 """,
         ),
