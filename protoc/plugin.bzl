@@ -4,7 +4,16 @@ load("@bazel_skylib//lib:paths.bzl", "paths")
 load("//protoc:providers.bzl", "ProtocPluginInfo")
 
 def with_suffix(protos, outputs_attr, **kwargs):
-    """Output func."""
+    """Return output filenames by replacing the .proto suffix.
+    
+    Args:
+        protos (list of ProtoInfo): The ProtoInfo holding the .proto files.
+        outputs_attr (list of str): Ignored by `with_suffix`.
+        **kwargs: `kwargs["suffix"]` contains the new suffix.
+    
+    Returns:
+        list of str : The output filenames with the new suffix.
+    """
     filenames = []
     for proto in protos:
         for file in proto.direct_sources:
@@ -20,8 +29,17 @@ def with_suffix(protos, outputs_attr, **kwargs):
     return filenames
 
 def with_predeclared_outputs(protos, outputs_attr, **kwargs):
-    """Output func."""
-    return [output for output in outputs_attr]
+    """Return a list of predeclared outputs.
+    
+    Args:
+        protos (list of ProtoInfo): Ignored by `with_predeclared_outputs`.
+        outputs_attr (list of str): The predeclared outputs.
+        **kwargs: `kwargs["suffix"]` Ignored by `with_predeclared_outputs`.
+    
+    Returns:
+        list of str : The predeclared outputs declared in `outputs_attr`.
+    """
+    return outputs_attr
 
 def _protoc_plugin_impl(ctx):
     # Fail if there is an illegal attribute combination used.
@@ -59,16 +77,65 @@ def _protoc_plugin_impl(ctx):
 
 protoc_plugin = rule(
     implementation = _protoc_plugin_impl,
+    doc = """Describes a generic protoc plugin.
+    
+This rule allows to describe and reuse configuration for a protoc plugin that either uses a suffix replacement approach or predeclared outputs to describe the files it generates.
+See documentation for `suffix` and `predeclared_outputs` for more information.""",
     attrs = {
         "executable": attr.label(
             executable = True,
+            doc = "The plugin executable.",
             cfg = "exec",
         ),
-        "suffix": attr.string(),
-        "predeclared_outputs": attr.bool(),
-        "default_options": attr.string_list(),
+        "suffix": attr.string(
+            doc = """If set, the plugin is expected to generate one file per input file that is named after the input file but replaces the \".proto\" suffix with the provided one.
+Either the `suffix` attribute or the `predeclared_outputs` attributes must be set, but not both at the same time.""",
+        ),
+        "predeclared_outputs": attr.bool(
+            doc = """If true, the plugin is configured to accept a list of predeclared outputs when used in a `protoc_output` target.
+The list of predeclared outputs is passed in the `outputs` attribute of the `protoc_output` rule. For example:
+
+```python
+protoc_plugin(
+    name = "myplugin",
+    executable = ":myexecutable",
+    predeclared_outputs = True,
+)
+
+protoc_output(
+    name = "foo_output".
+    protos = [":foo_proto"],
+    plugin = ":myplugin",
+    outputs = [
+        "acme/cloud/mypkg/hello.py",
+        "acme/cloud/mypkg/world.py",
+    ]
+)
+```""",
+        ),
+        "default_options": attr.string_list(
+            doc = """Options that should be passed to the plugin whenever it is run.
+Note that, if you are using `protoc_output`, there can also options be passed to the plugin using `protoc_output`s `options` attribute on a per target basis.
+
+For example: `["x=3", "y=5"]` will be passed as 
+
+```
+--<plugin-name>_opt=x=3 --<plugin-name>_opt=y=5
+``` 
+
+to the command line line when running protoc with the plugin (`<plugin-name>`).
+The `options` are subject to ctx.expanded_locations: For example, use 
+
+```
+"config=$(location :my_data_file)"
+```
+
+to obtain the runfile location of `:my_data_file` and passed it as `config` option to the plugin.
+`:my_data_file` must be passed in the `data` attribute for the expansion to work.
+Do not use the `locations` (note the `s`) directive.""",
+        ),
         "data": attr.label_list(
-            doc = "files added to the execution env such that the plugin have access to them",
+            doc = "Files that should be added to the execution environment whenever the plugin is run.",
             allow_files = True,
         ),
     },
