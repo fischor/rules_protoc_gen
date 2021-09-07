@@ -111,7 +111,10 @@ protoc_output(
         "acme/cloud/mypkg/world.py",
     ]
 )
-```""",
+```
+
+See also the documention of `protoc_plugin`.
+""",
         ),
         "default_options": attr.string_list(
             doc = """Options that should be passed to the plugin whenever it is run.
